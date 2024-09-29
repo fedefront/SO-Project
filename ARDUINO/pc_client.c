@@ -64,12 +64,18 @@ int main(int argc, char *argv[]) {
 
 //DA FARE...
     close(fd);
-    printf("Campionamento terminato. Dati salvati in 'data.txt'.\n");
+    printf("Campionamento terminato. Dati salvati in 'voltage.txt'.\n");
     return 0;
 }
 
 int open_serial_port(const char *device) {
-    //DA FARE...
+    int fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (fd == -1) {
+        return -1;
+    }
+    
+    fcntl(fd, F_SETFL, 0);
+    return fd;
 }
 
 void configure_serial_port(int fd) {

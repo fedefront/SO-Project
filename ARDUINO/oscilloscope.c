@@ -34,7 +34,7 @@ int main(void) {
     UART_Init();
     ADC_Init();
     Timer_Init();
-    sei(); // Abilita le interruzioni globali
+    sei();                    // Abilita le interruzioni globali
 
     selected_channels[0] = 0; // Canale A0 di default
     num_channels = 1;
@@ -47,11 +47,11 @@ int main(void) {
 }
 
 void UART_Init(void) {
-    UBRR0H = (uint8_t)(UBRR_VALUE >> 8);
-    UBRR0L = (uint8_t)(UBRR_VALUE & 0xFF);
-    UCSR0B = (1 << RXEN0) | (1 << TXEN0); // Abilita RX e TX
-    UCSR0B |= (1 << RXCIE0); // Abilita l'interruzione RX
-    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00); // 8 bit di dati
+    UBRR0H  = (uint8_t)(UBRR_VALUE >> 8);
+    UBRR0L  = (uint8_t)(UBRR_VALUE & 0xFF);
+    UCSR0B  = (1 << RXEN0) | (1 << TXEN0);   // Abilita RX e TX
+    UCSR0B |= (1 << RXCIE0);                 // Abilita l'interruzione RX
+    UCSR0C  = (1 << UCSZ01) | (1 << UCSZ00); // 8 bit di dati
 }
 
 void UART_Transmit(uint8_t data) {
@@ -63,15 +63,29 @@ void UART_SendString(const char *str) {
 }
 
 void ADC_Init(void) {
-    //DA FARE...
+    ADMUX = (1 << REFS1) | (1 << REFS0); // Riferimento interno a 2,56V
+    ADCSRA = (1 << ADEN);                // Abilita l'ADC
 }
 
 uint16_t ADC_Read(uint8_t channel) {
-    //DA FARE...
+    if (channel > 7) return 0;                      // Canali validi: 0-7
+    ADCSRB &= ~(1 << MUX5);                         // Cancella MUX5 per canali 0-7
+    ADMUX = (ADMUX & 0xE0) | (channel & 0x07);      // Mantiene REFS1, REFS0, imposta MUX4:0
+    ADCSRA |= (1 << ADSC);                          // Inizia la conversione
+    while (ADCSRA & (1 << ADSC));
+    return ADC;
 }
 
 void Timer_Init(void) {
-    //DA FARE...
+    TCCR1B = 0; // Ferma il timer
+    TCCR1A = 0;
+    TCCR1C = 0;
+    // Prescaler = 8
+    uint32_t ocr1a_value = ((uint32_t)F_CPU / 8) * sampling_interval / 1000000UL - 1;
+    OCR1A = (uint16_t)ocr1a_value;
+    TCCR1B |= (1 << WGM12);  // Modalità CTC
+    TCCR1B |= (1 << CS11);   // Prescaler 8
+    TIMSK1 |= (1 << OCIE1A); // Abilita l'interruzione del timer
 }
 
 void process_command(char *command) {
