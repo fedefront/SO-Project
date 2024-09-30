@@ -23,7 +23,16 @@ void process_command(char *command);
 
 
 ISR(USART0_RX_vect) {
-    //DA FARE...
+    static char rx_buffer[64];
+    static uint8_t rx_index = 0;
+    char received = UDR0;
+    if (received == '\n' || received == '\r') {
+        rx_buffer[rx_index] = '\0';
+        process_command(rx_buffer);
+        rx_index = 0;
+    } else if (rx_index < sizeof(rx_buffer) - 1) {
+        rx_buffer[rx_index++] = received;
+    }
 }
 
 ISR(TIMER1_COMPA_vect) {
