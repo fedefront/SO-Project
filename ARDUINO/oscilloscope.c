@@ -36,7 +36,24 @@ ISR(USART0_RX_vect) {
 }
 
 ISR(TIMER1_COMPA_vect) {
-    //DA FARE...
+     if (sampling) {
+        if (mode == 0) {                            // Modalità continua
+            UART_Transmit(0xAA);                    // Byte di sincronizzazione per il campione
+            for (uint8_t i = 0; i < num_channels; i++) {
+                uint16_t value = ADC_Read(selected_channels[i]);
+                UART_Transmit((value >> 8) & 0xFF);
+                UART_Transmit(value & 0xFF);
+            }
+        } else if (mode == 1) {                     // Modalità buffered con trigger
+           
+                    }
+                } else {
+                    // Buffer pieno, invia i dati al PC
+                    
+                }
+            }
+        }
+    }
 }
 
 int main(void) {
@@ -98,5 +115,21 @@ void Timer_Init(void) {
 }
 
 void process_command(char *command) {
-    //DA FARE...
+    if (strncmp(command, "START", 5) == 0) {
+        sampling = 1;
+        buffer_index = 0;
+        triggered = 0;
+        
+    } else if (strncmp(command, "STOP", 4) == 0) {
+        
+    } else if (strncmp(command, "SET_FREQ ", 9) == 0) {
+        
+        
+    } else if (strncmp(command, "SET_CHANNELS ", 13) == 0) {
+       
+    } else if (strncmp(command, "SET_MODE ", 9) == 0) {
+       
+    } else if (strncmp(command, "SET_TRIGGER ", 12) == 0) {
+   
+    } 
 }

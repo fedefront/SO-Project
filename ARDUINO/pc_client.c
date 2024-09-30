@@ -69,17 +69,30 @@ int main(int argc, char *argv[]) {
 }
 
 int open_serial_port(const char *device) {
-    int fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    int fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
     if (fd == -1) {
         return -1;
     }
-    
     fcntl(fd, F_SETFL, 0);
     return fd;
 }
 
 void configure_serial_port(int fd) {
-    //DA FARE...
+     struct termios options;
+    tcgetattr(fd, &options);
+    cfsetispeed(&options, B38400);
+    cfsetospeed(&options, B38400);
+    options.c_cflag |= (CLOCAL | CREAD);
+    options.c_cflag &= ~CSIZE;   // Maschera per i bit di dati 
+    options.c_cflag |= CS8;      // 8 bit di dati 
+    options.c_cflag &= ~PARENB;  // Nessuna parità 
+    options.c_cflag &= ~CSTOPB;  // 1 bit di stop 
+    options.c_cflag &= ~CRTSCTS; // Nessun controllo di flusso hardware 
+    options.c_iflag &= ~(IXON | IXOFF | IXANY); // Disabilita il controllo di flusso software 
+    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); 
+    options.c_oflag &= ~OPOST;   
+    tcsetattr(fd, TCSANOW, &options);
+    tcflush(fd, TCIOFLUSH);      // Pulisci i buffer 
 }
 
 void send_command(int fd, const char *command) {
