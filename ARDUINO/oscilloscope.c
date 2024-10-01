@@ -11,6 +11,20 @@
 #define MAX_CHANNELS 8
 #define BUFFER_SIZE 128   // Numero di campioni per canale in modalità buffered
 
+volatile uint8_t selected_channels[MAX_CHANNELS];
+volatile uint8_t num_channels = 1;
+volatile uint32_t sampling_interval = 1000;    // Intervallo di campionamento in microsecondi
+volatile uint8_t mode = 0;                     // 0: continuous, 1: buffered
+volatile uint8_t trigger_channel = 0;
+volatile uint16_t trigger_level = 512;
+volatile uint8_t trigger_edge = 0;             // 0: rising, 1: falling
+
+volatile uint16_t buffer[BUFFER_SIZE * MAX_CHANNELS];
+volatile uint16_t buffer_index = 0;
+volatile uint8_t sampling = 0;
+volatile uint8_t triggered = 0;
+volatile uint16_t last_sample = 0;
+
 void UART_Init(void);
 void UART_Transmit(uint8_t data);
 void UART_SendString(const char *str);
@@ -45,10 +59,33 @@ ISR(TIMER1_COMPA_vect) {
                 UART_Transmit(value & 0xFF);
             }
         } else if (mode == 1) {                     // Modalità buffered con trigger
-           
+           if (!triggered) {
+                uint16_t trigger_value = ADC_Read(trigger_channel);
+                if ((trigger_edge == 0 && trigger_value >= trigger_level && last_sample < trigger_level) ||
+                    (trigger_edge == 1 && trigger_value <= trigger_level && last_sample > trigger_level)) {
+                    // Trigger rilevato
+                    triggered = 1;
+                    buffer_index = 0;
+                }
+                last_sample = trigger_value;
+            } else {
+                if (buffer_index < BUFFER_SIZE * num_channels) {
+                    for (uint8_t i = 0; i < num_channels; i++) {
+                        uint16_t value = ADC_Read(selected_channels[i]);
+                        buffer[buffer_index++] = value;
                     }
                 } else {
                     // Buffer pieno, invia i dati al PC
+                    for (uint16_t i = 0; i < buffer_index; i += num_channels) {
+                        UART_Transmit(0xAA); // Byte di sincronizzazione per il campione
+                        for (uint8_t ch = 0; ch < num_channels; ch++) {
+                            uint16_t value = buffer[i + ch];
+                            UART_Transmit((value >> 8) & 0xFF);
+                            UART_Transmit(value & 0xFF);
+                        }
+                    }
+                    buffer_index = 0; // Reset per la prossima acquisizione
+                    triggered = 0;    // Reset per cercare nuovamente il trigger
                     
                 }
             }
@@ -81,11 +118,14 @@ void UART_Init(void) {
 }
 
 void UART_Transmit(uint8_t data) {
-    //DA FARE...
+    while (!(UCSR0A & (1 << UDRE0)));
+    UDR0 = data;
 }
 
 void UART_SendString(const char *str) {
-    //DA FARE...
+     while (*str) {
+        UART_Transmit(*str++);
+    }
 }
 
 void ADC_Init(void) {
@@ -121,7 +161,7 @@ void process_command(char *command) {
         triggered = 0;
         
     } else if (strncmp(command, "STOP", 4) == 0) {
-        
+        sampling = 0;
     } else if (strncmp(command, "SET_FREQ ", 9) == 0) {
         
         
