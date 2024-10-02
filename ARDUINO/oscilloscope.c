@@ -29,6 +29,12 @@ void UART_Init(void);
 void UART_Transmit(uint8_t data);
 void UART_SendString(const char *str);
 
+//funzione per il debug del codice..
+void UART_Debug(const char *message) {
+    UART_SendString(message);
+    UART_Transmit('\n');
+}
+
 void ADC_Init(void);
 uint16_t ADC_Read(uint8_t channel);
 
@@ -159,17 +165,48 @@ void process_command(char *command) {
         sampling = 1;
         buffer_index = 0;
         triggered = 0;
-        
+        UART_Debug("Sampling started");
     } else if (strncmp(command, "STOP", 4) == 0) {
         sampling = 0;
+        UART_Debug("Sampling stopped");
     } else if (strncmp(command, "SET_FREQ ", 9) == 0) {
-        
-        
+        sampling_interval = atoi(&command[9]);
+        Timer_Init();
+        UART_Debug("Frequency set");
     } else if (strncmp(command, "SET_CHANNELS ", 13) == 0) {
-       
+       char *token = strtok(&command[13], ",");
+        num_channels = 0;
+        while (token != NULL && num_channels < MAX_CHANNELS) {
+            int ch = atoi(token);
+            if (ch >= 0 && ch <= 7) {
+                selected_channels[num_channels++] = ch;
+            }
+            token = strtok(NULL, ",");
+        }
+        UART_Debug("Channels set");
     } else if (strncmp(command, "SET_MODE ", 9) == 0) {
-       
+        if (command[9] == '0') {
+            mode = 0;
+        } else if (command[9] == '1') {
+            mode = 1;
+        }
+        UART_Debug("Mode set");
     } else if (strncmp(command, "SET_TRIGGER ", 12) == 0) {
-   
+   char *params = &command[12];
+        char *token = strtok(params, " ");
+        if (token != NULL) {
+            trigger_channel = atoi(token);
+            token = strtok(NULL, " ");
+            if (token != NULL) {
+                trigger_level = atoi(token);
+                token = strtok(NULL, " ");
+                if (token != NULL) {
+                    trigger_edge = atoi(token); // 0 per RISING, 1 per FALLING
+                }
+            }
+        }UART_Debug("Trigger set");
     } 
+    else {
+        UART_Debug("Unknown command");
+           }
 }
