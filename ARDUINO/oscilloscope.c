@@ -6,7 +6,7 @@
 
 #define F_CPU 16000000UL  // Frequenza del clock della CPU
 #define BAUD 38400      // Baud rate per la comunicazione seriale
-
+#define UBRR_VALUE ((F_CPU / (16UL * BAUD)) - 1)
 
 #define MAX_CHANNELS 8
 #define BUFFER_SIZE 128   // Numero di campioni per canale in modalità buffered
@@ -165,14 +165,14 @@ void process_command(char *command) {
         sampling = 1;
         buffer_index = 0;
         triggered = 0;
-        UART_Debug("Sampling started");
+        //UART_Debug("Sampling started");
     } else if (strncmp(command, "STOP", 4) == 0) {
         sampling = 0;
-        UART_Debug("Sampling stopped");
+        //UART_Debug("Sampling stopped");
     } else if (strncmp(command, "SET_FREQ ", 9) == 0) {
         sampling_interval = atoi(&command[9]);
         Timer_Init();
-        UART_Debug("Frequency set");
+        //UART_Debug("Frequency set");
     } else if (strncmp(command, "SET_CHANNELS ", 13) == 0) {
        char *token = strtok(&command[13], ",");
         num_channels = 0;
@@ -183,14 +183,14 @@ void process_command(char *command) {
             }
             token = strtok(NULL, ",");
         }
-        UART_Debug("Channels set");
+        //UART_Debug("Channels set");
     } else if (strncmp(command, "SET_MODE ", 9) == 0) {
         if (command[9] == '0') {
             mode = 0;
         } else if (command[9] == '1') {
             mode = 1;
         }
-        UART_Debug("Mode set");
+         //UART_Debug("Mode set");
     } else if (strncmp(command, "SET_TRIGGER ", 12) == 0) {
    char *params = &command[12];
         char *token = strtok(params, " ");
@@ -204,9 +204,9 @@ void process_command(char *command) {
                     trigger_edge = atoi(token); // 0 per RISING, 1 per FALLING
                 }
             }
-        }UART_Debug("Trigger set");
+        }///UART_Debug("Trigger set");
     } 
-    else {
-        UART_Debug("Unknown command");
-           }
+      //else {
+        //UART_Debug("Unknown command");
+           //}
 }
