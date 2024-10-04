@@ -154,6 +154,64 @@ void receive_data(int fd, const char *filename, int num_channels, int mode) {
         perror("Errore nell'apertura del file");
         return;
     }
-    //DA fare...
+    uint8_t buffer[MAX_BUFFER_SIZE];
+    int bytes_per_sample = 1 + num_channels * 2; // 1 byte di sincronizzazione + 2 bytes per canale
+    int buffer_offset = 0;
+    time_t start_time = time(NULL);
+
+    printf("Campionamento in corso per 10 secondi...\n");
+
+    while (time(NULL) - start_time < 10) {
+        int bytes_read = read(fd, buffer + buffer_offset, sizeof(buffer) - buffer_offset);
+        if (bytes_read > 0) {
+            bytes_read += buffer_offset;
+            int i = 0;
+            while (i <= bytes_read - bytes_per_sample) {
+                // Cerca il byte di sincronizzazione
+                if (buffer[i] != 0xAA) {
+                    // Non è il byte di sincronizzazione, scarta il byte
+                    i++;
+                    continue;
+                }
+                int temp_i = i + 1; // Indice temporaneo dopo il byte di sincronizzazione
+
+                // Controllo se ci sono abbastanza dati per leggere i canali
+                if (bytes_read - temp_i < num_channels * 2) {
+                    // Non abbiamo abbastanza dati, aspettiamo il prossimo ciclo
+                    break;
+                }
+
+                // Legge i dati per ogni canale
+                printf("Campione: ");
+                for (int ch = 0; ch < num_channels; ch++) {
+                    uint8_t high_byte = buffer[temp_i++];
+                    uint8_t low_byte = buffer[temp_i++];
+                    uint16_t value = ((uint16_t)high_byte << 8) | low_byte;
+                    printf("%u ", value);
+                    fprintf(file, "%u", value);
+                    if (ch < num_channels - 1) {
+                        fprintf(file, " ");
+                    }
+                }
+                printf("\n");
+                fprintf(file, "\n");
+                fflush(file);
+
+                i = temp_i; // Aggiorna i dopo aver letto un campione completo
+            }
+            // Gestisci eventuali bytes rimasti nel buffer
+            if (i < bytes_read) {
+                buffer_offset = bytes_read - i;
+                memmove(buffer, &buffer[i], buffer_offset);
+            } else {
+                buffer_offset = 0;
+            }
+        } else if (bytes_read == 0) {
+            usleep(1000); // Attendi 1ms
+        } else {
+            perror("Errore nella lettura dalla porta seriale");
+            break;
+        }
+    }
     fclose(file);
 }
