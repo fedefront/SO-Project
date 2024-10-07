@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +7,6 @@
 #include <termios.h>
 #include <errno.h>
 #include <time.h>
-#include <stdint.h>
 
 #define MAX_BUFFER_SIZE 1024
 #define BUFFER_SIZE 128 // come quello definito in oscilloscope.c
@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Chiedo all'utente il numero di canali
-    printf("Inserisci il numero di canali da usare (1-16): ");
-    if (scanf("%d", &num_channels) != 1 || num_channels < 1 || num_channels > 16) {
-        fprintf(stderr, "Numero di canali non valido. Deve essere tra 1 e 16.\n");
+    printf("Inserisci il numero di canali da usare (1-8): ");
+    if (scanf("%d", &num_channels) != 1 || num_channels < 1 || num_channels > 8) {
+        fprintf(stderr, "Numero di canali non valido. Deve essere tra 1 e 8.\n");
         return -1;
     }
 
@@ -119,7 +119,7 @@ int open_serial_port(const char *device) {
 }
 
 void configure_serial_port(int fd) {
-     struct termios options;
+    struct termios options;
     tcgetattr(fd, &options);
     cfsetispeed(&options, B38400);
     cfsetospeed(&options, B38400);
@@ -167,7 +167,7 @@ void receive_data(int fd, const char *filename, int num_channels, int mode) {
             bytes_read += buffer_offset;
             int i = 0;
             while (i <= bytes_read - bytes_per_sample) {
-                // Cerca il byte di sincronizzazione
+                // Cerco il byte di sincronizzazione
                 if (buffer[i] != 0xAA) {
                     // Non è il byte di sincronizzazione, scarta il byte
                     i++;
@@ -181,7 +181,7 @@ void receive_data(int fd, const char *filename, int num_channels, int mode) {
                     break;
                 }
 
-                // Legge i dati per ogni canale
+                // Leggo i dati per ogni canale
                 printf("Campione: ");
                 for (int ch = 0; ch < num_channels; ch++) {
                     uint8_t high_byte = buffer[temp_i++];
@@ -197,7 +197,7 @@ void receive_data(int fd, const char *filename, int num_channels, int mode) {
                 fprintf(file, "\n");
                 fflush(file);
 
-                i = temp_i; // Aggiorna i dopo aver letto un campione completo
+                i = temp_i; // Aggiorno i dopo aver letto un campione completo
             }
             // Gestisci eventuali bytes rimasti nel buffer
             if (i < bytes_read) {

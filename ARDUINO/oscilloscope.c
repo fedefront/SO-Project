@@ -5,7 +5,7 @@
 #include <string.h>
 
 #define F_CPU 16000000UL  // Frequenza del clock della CPU
-#define BAUD 38400      // Baud rate per la comunicazione seriale
+#define BAUD 38400        // Baud rate per la comunicazione seriale
 #define UBRR_VALUE ((F_CPU / (16UL * BAUD)) - 1)
 
 #define MAX_CHANNELS 8
@@ -192,7 +192,7 @@ void process_command(char *command) {
         }
          //UART_Debug("Mode set");
     } else if (strncmp(command, "SET_TRIGGER ", 12) == 0) {
-   char *params = &command[12];
+        char *params = &command[12];
         char *token = strtok(params, " ");
         if (token != NULL) {
             trigger_channel = atoi(token);
@@ -204,7 +204,8 @@ void process_command(char *command) {
                     trigger_edge = atoi(token); // 0 per RISING, 1 per FALLING
                 }
             }
-        }///UART_Debug("Trigger set");
+        }
+        //UART_Debug("Trigger set");
     } 
       //else {
         //UART_Debug("Unknown command");
