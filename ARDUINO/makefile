@@ -73,6 +73,6 @@ upload: $(MCU_TARGET).hex
 clean:
 	rm -f *.o *.elf *.hex voltage.txt $(PC_TARGET) 
 plot:
-	gnuplot plot_data.gnuplot 
+	gnuplot plot_data.gp 
 # Phony targets
-.PHONY: all upload clean
+.PHONY: all upload cleanp
