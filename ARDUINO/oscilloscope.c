@@ -25,10 +25,15 @@ volatile uint8_t sampling = 0;
 volatile uint8_t triggered = 0;
 volatile uint16_t last_sample = 0;
 
+volatile uint8_t continuos_sampling = 0;
+volatile uint8_t triggered_sampling = 0;
+
 void UART_Init(void);
 void UART_Transmit(uint8_t data);
 void UART_SendString(const char *str);
 
+void continuos(void);
+void buffered(void);
 //funzione per il debug del codice..
 void UART_Debug(const char *message) {
     UART_SendString(message);
@@ -58,23 +63,55 @@ ISR(USART0_RX_vect) {
 ISR(TIMER1_COMPA_vect) {
      if (sampling) {
         if (mode == 0) {                            // Modalità continua
-            UART_Transmit(0xAA);                    // Byte di sincronizzazione per il campione
-            for (uint8_t i = 0; i < num_channels; i++) {
-                uint16_t value = ADC_Read(selected_channels[i]);
-                UART_Transmit((value >> 8) & 0xFF);
-                UART_Transmit(value & 0xFF);
-            }
+            continuos_sampling = 1;            
         } else if (mode == 1) {                     // Modalità buffered con trigger
-           if (!triggered) {
-                uint16_t trigger_value = ADC_Read(trigger_channel);
-                if ((trigger_edge == 0 && trigger_value >= trigger_level && last_sample < trigger_level) ||
-                    (trigger_edge == 1 && trigger_value <= trigger_level && last_sample > trigger_level)) {
-                    // Trigger rilevato
-                    triggered = 1;
-                    buffer_index = 0;
-                }
-                last_sample = trigger_value;
-            } else {
+            triggered_sampling = 1;
+        }
+    }
+}
+
+int main(void) {
+    UART_Init();
+    ADC_Init();
+    Timer_Init();
+    sei();                    // Abilita le interruzioni globali
+
+    selected_channels[0] = 0; // Canale A0 di default
+    num_channels = 1;
+
+    while (1) {
+        // Il programma principale rimane in loop
+        if (continuos_sampling == 1){
+            continuos();
+        } else if (triggered_sampling == 1){
+            buffered();
+        } else continue;
+    }
+
+    return 0;
+}
+
+void continuos(void){
+    UART_Transmit(0xAA);         // Byte di sincronizzazione per il campione
+    for (uint8_t i = 0; i < num_channels; i++) {
+        uint16_t value = ADC_Read(selected_channels[i]);
+        UART_Transmit((value >> 8) & 0xFF);
+        UART_Transmit(value & 0xFF);
+    }
+    continuos_sampling = 0;
+}
+
+void buffered(void){
+    if (!triggered) {
+        uint16_t trigger_value = ADC_Read(trigger_channel);
+        if ((trigger_edge == 0 && trigger_value >= trigger_level && last_sample < trigger_level) ||
+        (trigger_edge == 1 && trigger_value <= trigger_level && last_sample > trigger_level)) {
+            // Trigger rilevato
+            triggered = 1;
+            buffer_index = 0;
+        }
+    last_sample = trigger_value;
+    } else {
                 if (buffer_index < BUFFER_SIZE * num_channels) {
                     for (uint8_t i = 0; i < num_channels; i++) {
                         uint16_t value = ADC_Read(selected_channels[i]);
@@ -92,27 +129,9 @@ ISR(TIMER1_COMPA_vect) {
                     }
                     buffer_index = 0; // Reset per la prossima acquisizione
                     triggered = 0;    // Reset per cercare nuovamente il trigger
-                    
                 }
             }
-        }
-    }
-}
-
-int main(void) {
-    UART_Init();
-    ADC_Init();
-    Timer_Init();
-    sei();                    // Abilita le interruzioni globali
-
-    selected_channels[0] = 0; // Canale A0 di default
-    num_channels = 1;
-
-    while (1) {
-        // Il programma principale rimane in loop
-    }
-
-    return 0;
+    triggered_sampling  = 0;
 }
 
 void UART_Init(void) {
